@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Disease Detection</title>
+
+    <!-- Add a link tag for the favicon.ico -->
+    <link rel="icon" href="D:\code of hackathon\telecode\favicon_io" type="image/x-icon">
+
+    <!-- Add a link tag for a placeholder favicon image (32x32 pixels) -->
+    <!-- <link rel="icon" href="path/to/placeholder.png" sizes="32x32" type="image/png"> -->
+</head>
+<body>
+
+<h1>Plant Disease Detection</h1>
+
+<video id="camera" width="640" height="480" autoplay></video>
+<button onclick="captureImage()">Capture Image</button>
+
+<!-- Add an image element for preview -->
+<img id="imagePreview" width="320" height="240" style="display: none;" alt="Captured Image">
+
+<!-- Add a button to upload video and stop capture -->
+<input type="file" accept="video/*" id="videoInput" style="display: none;" onchange="uploadVideo(event)">
+<button onclick="startVideoCapture()">Upload Video</button>
+<button onclick="stopVideoCapture()" style="display: none;">Stop Capture</button>
+
+<script>
+    let videoCaptureInterval;
+
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const camera = document.getElementById('camera');
+            camera.srcObject = stream;
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+        }
+    }
+
+    function captureImage() {
+        const camera = document.getElementById('camera');
+        const canvas = document.createElement('canvas');
+        canvas.width = camera.videoWidth;
+        canvas.height = camera.videoHeight;
+
+        const context = canvas.getContext('2d');
+        context.drawImage(camera, 0, 0, canvas.width, canvas.height);
+
+        // Convert canvas data to a Blob
+        canvas.toBlob((blob) => {
+            // Show the captured image preview
+            const imagePreview = document.getElementById('imagePreview');
+            imagePreview.src = URL.createObjectURL(blob);
+            imagePreview.style.display = 'block';
+
+            // Send the Blob (image file) to Flask API server
+            sendImageToServer(blob);
+        }, 'image/jpeg');
+    }
+
+    function sendImageToServer(imageBlob) {
+        const formData = new FormData();
+        formData.append('image', imageBlob, 'image.jpg');
+
+        // Use the fetch API or other methods to send formData to your Flask API
+        // Example using fetch:
+        fetch('http://127.0.0.1:5000/upload_image', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Handle response from Flask API
+            console.log('Response from server:', data);
+        })
+        .catch(error => {
+            console.error('Error sending image to server:', error);
+        });
+    }
+
+    function startVideoCapture() {
+        const camera = document.getElementById('camera');
+
+        // Stop the automatic image capture
+        clearInterval(videoCaptureInterval);
+
+        // Hide the image capture button and show the stop capture button
+        document.querySelector('button[onclick="captureImage()"]').style.display = 'none';
+        document.querySelector('button[onclick="startVideoCapture()"]').style.display = 'none';
+        document.querySelector('button[onclick="stopVideoCapture()"]').style.display = 'block';
+
+        // Start capturing video frames
+        camera.addEventListener('loadedmetadata', () => {
+            videoCaptureInterval = setInterval(captureVideoFrame, 30000);
+        });
+    }
+
+    function stopVideoCapture() {
+        // Stop the automatic video capture
+        clearInterval(videoCaptureInterval);
+
+        // Show the image capture and upload video buttons
+        document.querySelector('button[onclick="captureImage()"]').style.display = 'block';
+        document.querySelector('button[onclick="startVideoCapture()"]').style.display = 'block';
+        document.querySelector('button[onclick="stopVideoCapture()"]').style.display = 'none';
+    }
+
+    function captureVideoFrame() {
+        const camera = document.getElementById('camera');
+        const canvas = document.createElement('canvas');
+        canvas.width = camera.videoWidth;
+        canvas.height = camera.videoHeight;
+
+        const context = canvas.getContext('2d');
+        context.drawImage(camera, 0, 0, canvas.width, canvas.height);
+
+        // Convert canvas data to a Blob
+        canvas.toBlob((blob) => {
+            // Send the Blob (video frame) to Flask API server
+            sendVideoFrameToServer(blob);
+        }, 'image/jpeg');
+    }
+
+    function sendVideoFrameToServer(videoBlob) {
+        const formData = new FormData();
+        formData.append('file', videoBlob, 'video_frame.jpg');
+
+        // Use the fetch API or other methods to send formData to your Flask API
+        // Example using fetch:
+        fetch('http://127.0.0.1:5000/upload_image', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Handle response from Flask API for video frame
+            console.log('Response from server:', data);
+        })
+        .catch(error => {
+            console.error('Error sending video frame to server:', error);
+        });
+    }
+
+    function uploadVideo(event) {
+        const videoFile = event.target.files[0];
+
+        // Stop automatic video capture
+        clearInterval(videoCaptureInterval);
+
+        // Show the image capture and upload video buttons
+        document.querySelector('button[onclick="captureImage()"]').style.display = 'block';
+        document.querySelector('button[onclick="startVideoCapture()"]').style.display = 'block';
+        document.querySelector('button[onclick="stopVideoCapture()"]').style.display = 'none';
+
+        // Send the selected video file to Flask API for processing
+        const formData = new FormData();
+        formData.append('file', videoFile, 'video_upload.mp4');
+
+        fetch('http://127.0.0.1:5000/upload_image', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Handle response from Flask API for uploaded video
+            console.log('Response from server:', data);
+        })
+        .catch(error => {
+            console.error('Error uploading video to server:', error);
+        });
+    }
+
+    // Start the camera when the page loads
+    startCamera();
+</script>
+
+</body>
+</html>
